@@ -1,0 +1,89 @@
+lcr-modules:
+    
+    gatk_rnaseq:
+
+        inputs:
+            # Available wildcards: {seq_type} {genome_build} {sample_id}
+            sample_bam: "__UPDATE__"
+            sample_bai: "__UPDATE__"
+
+
+        scratch_subdirectories: []
+
+        options:
+            java_opts: "-XX:ConcGCThreads=1"
+            gatk_splitntrim: " -fixNDN TRUE -RF GoodCigarReadFilter "
+            gatk_addRG:
+                platform: "illumina"
+                unit: "unit1"
+                stringency: "LENIENT"
+            gatk_baserecalibrator: ""
+            gatk_applybqsr: ""
+            gatk_variant_calling:
+                min_conf_thres: 20.0
+                gatk_opts: ""
+            gatk_variant_filtration:
+                window: 35 # window size between SNPs in cluster
+                cluster_size: 3 # at least 3 SNPs in cluster
+                # hard filtering (filters OUT) based on metrics: 
+                    # FS (FisherStrand): Phred-scale probability that there is a strand bias from a Fisher's test. (default FS > 30.0)
+                    # QD (QualByDepth): variant confidence/unfiltered depth (normalizes variant quality to avoid inflation from deep coverage) (default QD < 2.0)
+                    # DP (depth): minimum depth (default DP < 5.0)
+                filter_expression: "-filter-expression \"FS > 30.0\" -filter-name FS -filter-expression \"QD < 2.0\" -filter-name QD -filter-expression \"DP < 5.0\" -filter-name DP"
+            gatk_rnaseq_filter_passed: 
+                params: "-f '.,PASS' "
+                # Can be modified to filter on additional criteria using bcftools view syntax
+                # For example, to remove all variants with -log10(POPAF) > 4.0: 
+                #"-f '.,PASS' -i 'INFO/POPAF > 4'"
+
+
+        conda_envs:
+            picard: "{MODSDIR}/envs/picard-2.22.3.yaml"
+            gatk_rnaseq: "{MODSDIR}/envs/gatk-4.1.8.1.yaml"
+            bcftools: "{MODSDIR}/envs/bcftools-1.10.2.yaml"
+            
+        threads:
+            gatk_splitntrim: 12
+            gatk_addRG: 12
+            gatk_base_recalibration: 12
+            gatk_applybqsr: 12
+            gatk_variant_calling: 24
+            gatk_variant_filtration: 24
+            merge_vcfs: 10
+            gatk_rnaseq_passed: 10
+            gnomad_filter: 4
+
+        resources:
+            gatk_splitntrim: 
+                mem_mb: 48000
+                bam: 1
+            gatk_addRG:
+                mem_mb: 12000
+                bam: 1
+            gatk_base_recalibration:
+                mem_mb: 12000
+                bam: 1
+            gatk_applybqsr:
+                mem_mb: 12000
+                bam: 1
+            gatk_variant_calling:
+                mem_mb: 48000
+                bam: 1
+            gatk_variant_filtration:
+                mem_mb: 12000
+                bam: 1
+            merge_vcfs:
+                mem_mb: 10000
+            gatk_rnaseq_passed:
+                mem_mb: 10000
+            gnomad_filter:
+                mem_mb: 2000
+
+        pairing_config:
+            mrna:
+                run_paired_tumours: False
+                run_unpaired_tumours_with: "no_normal"
+                run_paired_tumours_as_unpaired: True
+                
+
+

@@ -42,6 +42,7 @@ configfile: "../modules/starfish/2.0/config/default.yaml"
 configfile: "../modules/sage/1.0/config/default.yaml"
 configfile: "../modules/slms_3/1.0/config/default.yaml"
 configfile: "../modules/ichorcna/1.0/config/default.yaml"
+configfile: "../modules/gatk_rnaseq/1.0/config/default.yaml"
 
 # Load project-specific config, which includes the shared 
 # configuration and some module-specific config updates
@@ -77,6 +78,7 @@ include: "../modules/lofreq/1.0/lofreq.smk"
 include: "../modules/starfish/2.0/starfish.smk"
 include: "../modules/sage/1.0/sage.smk"
 include: "../modules/ichorcna/1.0/ichorcna.smk"
+include: "../modules/gatk_rnaseq/1.0/gatk_rnaseq.smk"
 
 ##### TARGETS ######
 
@@ -99,5 +101,6 @@ rule all:
         rules._vcf2maf_all.input,
         rules._sage_all.input, 
         rules._slms_3_all.input,
-        rules._ichorcna_all.input
+        rules._ichorcna_all.input,
+        rules._gatk_rnaseq_all.input
         

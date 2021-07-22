@@ -171,3 +171,9 @@ lcr-modules:
         # include here any additional flags to modify default parameters
         options:
             sage_run: ""
+
+
+    gatk_rnaseq:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
