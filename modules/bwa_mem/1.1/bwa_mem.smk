@@ -16,6 +16,26 @@ import os
 # Import package with useful functions for developing analysis modules
 import oncopipe as op
 
+# Check that the oncopipe dependency is up-to-date. Add all the following lines to any module that uses new features in oncopipe
+min_oncopipe_version="1.0.11"
+import pkg_resources
+try:
+    from packaging import version
+except ModuleNotFoundError:
+    sys.exit("The packaging module dependency is missing. Please install it ('pip install packaging') and ensure you are using the most up-to-date oncopipe version")
+
+# To avoid this we need to add the "packaging" module as a dependency for LCR-modules or oncopipe
+
+current_version = pkg_resources.get_distribution("oncopipe").version
+if version.parse(current_version) < version.parse(min_oncopipe_version):
+    logger.warning(
+                '\x1b[0;31;40m' + f'ERROR: oncopipe version installed: {current_version}'
+                "\n" f"ERROR: This module requires oncopipe version >= {min_oncopipe_version}. Please update oncopipe in your environment" + '\x1b[0m'
+                )
+    sys.exit("Instructions for updating to the current version of oncopipe are available at https://lcr-modules.readthedocs.io/en/latest/ (use option 2)")
+
+# End of dependency checking section 
+
 # Setup module and store module-specific configuration in `CFG`
 # `CFG` is a shortcut to `config["lcr-modules"]["bwa_mem"]`
 CFG = op.setup_module(
@@ -48,8 +68,8 @@ rule _bwa_mem_input_fastq:
         fastq_1 = CFG["dirs"]["inputs"] + "fastq/{seq_type}--{genome_build}/{sample_id}.R1.fastq.gz",
         fastq_2 = CFG["dirs"]["inputs"] + "fastq/{seq_type}--{genome_build}/{sample_id}.R2.fastq.gz",
     run:
-        op.relative_symlink(input.fastq_1, output.fastq_1)
-        op.relative_symlink(input.fastq_2, output.fastq_2)
+        op.absolute_symlink(input.fastq_1, output.fastq_1)
+        op.absolute_symlink(input.fastq_2, output.fastq_2)
 
 
 rule _bwa_mem_run:
@@ -118,7 +138,7 @@ rule _bwa_mem_symlink_bam:
     wildcard_constraints: 
         sample_id = "|".join(sample_ids_bwa_mem)
     run:
-        op.relative_symlink(input.bam, output.bam)
+        op.absolute_symlink(input.bam, output.bam)
 
 
 rule _bwa_mem_symlink_sorted_bam:
@@ -130,7 +150,7 @@ rule _bwa_mem_symlink_sorted_bam:
     wildcard_constraints: 
         sample_id = "|".join(sample_ids_bwa_mem)
     run:
-        op.relative_symlink(input.bam, output.bam)
+        op.absolute_symlink(input.bam, output.bam)
         os.remove(input.bwa_mem_bam)
         shell("touch {input.bwa_mem_bam}.deleted")
 
@@ -146,8 +166,8 @@ rule _bwa_mem_output_bam:
     wildcard_constraints: 
         sample_id = "|".join(sample_ids_bwa_mem)
     run:
-        op.relative_symlink(input.bam, output.bam)
-        op.relative_symlink(input.bai, output.bam + ".bai")
+        op.relative_symlink(input.bam, output.bam, in_module=True)
+        op.relative_symlink(input.bai, output.bam + ".bai", in_module=True)
         os.remove(input.sorted_bam)
         shell("touch {input.sorted_bam}.deleted")
 

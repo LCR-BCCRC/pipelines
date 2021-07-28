@@ -2,3 +2,5 @@ sample_id	seq_type	patient_id	tissue_status	genome_build	strand	read_length
 TCRBOA7-N-WEX	capture	TCRBOA7	normal	grch37	positive	100
 TCRBOA7-T-WEX	capture	TCRBOA7	tumour	grch37	positive	100
 TCRBOA7-T-RNA	mrna	TCRBOA7	tumour	grch37	positive	100
+TCRBOA7-N-WGS	genome	TCRBOA7	normal	grch37	positive	100
+TCRBOA7-T-WGS	genome	TCRBOA7	tumour	grch37	positive	100

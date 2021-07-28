@@ -1,20 +1,22 @@
 lcr-modules:
-
     liftover:
-        # Please specify parameters marked as __UPDATE__ using provided examples. 
+        # Please specify parameters marked as __UPDATE__ using provided examples.
         # The "tool" option means the name of the tool used to produce initial .seg files. It will be preserved in the name of the final output file.
-        # The "sample_seg" option points to the initial .seg files to be converted. 
-        # The "min_mismatch" option is a minimum ratio of bases that must remap when transforming coordinates. 
+        # The "sample_seg" option points to the initial .seg files to be converted.
+        # The "min_mismatch" option is a minimum ratio of bases that must remap when transforming coordinates.
         # The "min_mismatch" must be a number with maximum of 1 (100% of bases must match when remapping).
         #tool: "battenberg"
         tool: "__UPDATE__" # Specify the name of the tool that produced the .seg files. For example, "battenberg"
         #you can include the version if it helps simplify the pattern matching, for example sequenza-1.0
-        dirs: 
+        dirs:
             _parent: "__UPDATE__" #example for combining with Battenberg module: "results/battenberg-1.0_liftover-1.1"
         inputs:
             sample_seg: "__UPDATE__"
             # Path to seg files for lifting. For example:
+            # For battenberg only:
             # sample_seg: "data/{tool}/{genome_build}/{tumour_sample_id}--{normal_sample_id}_subclones.igv.seg"
+            # For Sequenza
+            # results/{tool}/99-outputs/filtered_seg/{seq_type}--{genome_build}/{tumour_sample_id}--{normal_sample_id}--matched.igv.seg
         scratch_subdirectories: "scratch/"
         options:
             chr_colNum: 2

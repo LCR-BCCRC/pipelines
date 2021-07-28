@@ -1,0 +1,90 @@
+lcr-modules:
+    _shared:
+        lcr-modules: "../"
+        lcr-scripts: "../../lcr-scripts/"
+        root_output_dir: "results/"
+        scratch_directory: "scratch/"
+        unmatched_normal_ids:
+            genome--grch37: "TCRBOA7-N-WGS"
+
+    picard_qc:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+        switches:
+            capture_intervals:
+                _default: "reference/exomes/grch37/interval/target_regions.nochr_intervals.txt"
+                # if 'capture_kit_id' is a column in samples.tsv and contain more than one kit_id, specify each kit using the values in the column. e.g. and add the corresponding bed file if needed
+                # S07604624: "reference/exomes/grch37/interval/S07604624_intervals.txt"
+                # <grch38_kit>: "reference/exomes/grch38/interval/<grch38_kit>_intervals.txt"
+
+    bam2fastq:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+        temp_outputs: True # fastq outputs will be temporary
+
+    sequenza:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+        scratch_subdirectories: []
+
+    bwa_mem:
+        inputs:
+            sample_fastq_1: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read1.fastq.gz"
+            sample_fastq_2: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read2.fastq.gz"
+        scratch_subdirectories: []
+
+    controlfreec:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+        scratch_subdirectories: [] # mpileup should be in scratch space
+
+    slms_3:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+
+    gridss:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+
+    mixcr:
+        inputs:
+            sample_fastq_1: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read1.fastq.gz"
+            sample_fastq_2: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read2.fastq.gz"
+            # Path to the directory where MIXCR should be installed
+            mixcr_exec: "data"
+
+    liftover:
+        tool: "sequenza"
+        dirs:
+            _parent: "results/sequenza-1.4_liftover-1.2"
+        inputs:
+            sample_seg: "results/sequenza-1.4/99-outputs/filtered_seg/{seq_type}--{genome_build}/{tumour_sample_id}--{normal_sample_id}--matched.igv.seg"
+
+    battenberg:
+        inputs:
+            # Available wildcards: {seq_type} {genome_build} {sample_id}
+            sample_bam: "data/{sample_id}.bam"
+
+    pathseq:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+
+        options:
+            min_read_length: 49
+            ebv_cutoff: [0.00004, 0.00008]
+
+    utils:
+        inputs:
+            bed:
+                grch37: "data/exome_bed/hg19/target_regions.nochr.bed" # make sure this corresponds with config["lcr-modules"]["picard_qc"]["inputs"]["intervals"]
+                # if testing on GSC, use this file: "/projects/dscott_prj/CCSRI_1500/exomes/ref/agilent/hg19/target_regions.nochr.bed"
+        mem_mb:
+            bam_sort: 48000
+        threads:
+            bam_sort: 12

@@ -16,6 +16,26 @@ from os.path import join
 
 import oncopipe as op
 
+# Check that the oncopipe dependency is up-to-date. Add all the following lines to any module that uses new features in oncopipe
+min_oncopipe_version="1.0.11"
+import pkg_resources
+try:
+    from packaging import version
+except ModuleNotFoundError:
+    sys.exit("The packaging module dependency is missing. Please install it ('pip install packaging') and ensure you are using the most up-to-date oncopipe version")
+
+# To avoid this we need to add the "packaging" module as a dependency for LCR-modules or oncopipe
+
+current_version = pkg_resources.get_distribution("oncopipe").version
+if version.parse(current_version) < version.parse(min_oncopipe_version):
+    logger.warning(
+                '\x1b[0;31;40m' + f'ERROR: oncopipe version installed: {current_version}'
+                "\n" f"ERROR: This module requires oncopipe version >= {min_oncopipe_version}. Please update oncopipe in your environment" + '\x1b[0m'
+                )
+    sys.exit("Instructions for updating to the current version of oncopipe are available at https://lcr-modules.readthedocs.io/en/latest/ (use option 2)")
+
+# End of dependency checking section 
+
 # Setup module and store module-specific configuration in `CONFIG`
 CFG = op.setup_module(
     name = "vcf2maf",
@@ -46,7 +66,7 @@ rule _vcf2maf_input_vcf:
     output:
         vcf_gz = CFG["dirs"]["inputs"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/{base_name}.vcf.gz"
     run:
-        op.relative_symlink(input.vcf_gz, output.vcf_gz)
+        op.absolute_symlink(input.vcf_gz, output.vcf_gz)
 
 rule _vcf2maf_decompress_vcf:
     input:
@@ -142,8 +162,8 @@ rule _vcf2maf_output_maf:
     params:
         chain = lambda w: "hg38ToHg19" if "38" in str({w.genome_build}) else "hg19ToHg38"
     run:
-        op.relative_symlink(input.maf, output.maf)
-        op.relative_symlink((input.maf_converted+str("_")+str(params.chain)+str(".maf")), (output.maf[:-4]+str(".converted_")+str(params.chain)+str(".maf")))
+        op.relative_symlink(input.maf, output.maf, in_module=True)
+        op.relative_symlink((input.maf_converted+str("_")+str(params.chain)+str(".maf")), (output.maf[:-4]+str(".converted_")+str(params.chain)+str(".maf")), in_module=True)
 
 # Generates the target sentinels for each run, which generate the symlinks
 rule _vcf2maf_all:

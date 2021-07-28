@@ -15,6 +15,26 @@
 # Import package with useful functions for developing analysis modules
 import oncopipe as op
 
+# Check that the oncopipe dependency is up-to-date. Add all the following lines to any module that uses new features in oncopipe
+min_oncopipe_version="1.0.11"
+import pkg_resources
+try:
+    from packaging import version
+except ModuleNotFoundError:
+    sys.exit("The packaging module dependency is missing. Please install it ('pip install packaging') and ensure you are using the most up-to-date oncopipe version")
+
+# To avoid this we need to add the "packaging" module as a dependency for LCR-modules or oncopipe
+
+current_version = pkg_resources.get_distribution("oncopipe").version
+if version.parse(current_version) < version.parse(min_oncopipe_version):
+    logger.warning(
+                '\x1b[0;31;40m' + f'ERROR: oncopipe version installed: {current_version}'
+                "\n" f"ERROR: This module requires oncopipe version >= {min_oncopipe_version}. Please update oncopipe in your environment" + '\x1b[0m'
+                )
+    sys.exit("Instructions for updating to the current version of oncopipe are available at https://lcr-modules.readthedocs.io/en/latest/ (use option 2)")
+
+# End of dependency checking section 
+
 
 # Setup module and store module-specific configuration in `CFG`
 # `CFG` is a shortcut to `config["lcr-modules"]["gridss"]`
@@ -162,8 +182,8 @@ rule _gridss_input_bam:
         sample_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{sample_id}.bam", 
         sample_bai = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{sample_id}.bam.bai" 
     run:
-        op.relative_symlink(input.sample_bam, output.sample_bam)
-        op.relative_symlink(input.sample_bai, output.sample_bai)
+        op.absolute_symlink(input.sample_bam, output.sample_bam)
+        op.absolute_symlink(input.sample_bai, output.sample_bai)
 
 # Preprocess unmatched normal bams
 rule _gridss_preprocess_unmatched_normal:
@@ -206,12 +226,12 @@ rule _gridss_symlink_preprocessed_normal:
     input: 
         workdir = str(rules._gridss_preprocess_unmatched_normal.output.workdir)
     output: 
-        workdir = temp(CFG["dirs"]["gridss"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/{sample_id}.bam.gridss.working")
+        workdir = temp(directory(CFG["dirs"]["gridss"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/{sample_id}.bam.gridss.working"))
     priority: 0
     wildcard_constraints: 
         sample_id = "|".join(unmatched_normal_ids)
     run: 
-        op.relative_symlink(input.workdir, output.workdir)
+        op.absolute_symlink(input.workdir, output.workdir)
 
 # Preprocess all other bams as part of the group job
 rule _gridss_preprocess:
@@ -488,9 +508,9 @@ rule _gridss_output_viral_vcf:
         tbi = CFG["dirs"]["outputs"] + "vcf/{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}.gridss_viral_annotation_filtered.vcf.gz.tbi", 
         bedpe = CFG["dirs"]["outputs"] + "bedpe/{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}.gridss_viral_annotation_filtered.bedpe"
     run:
-        op.relative_symlink(input.vcf, output.vcf)
-        op.relative_symlink(input.tbi, output.tbi)
-        op.relative_symlink(input.bedpe, output.bedpe)
+        op.relative_symlink(input.vcf, output.vcf, in_module=True)
+        op.relative_symlink(input.tbi, output.tbi, in_module=True)
+        op.relative_symlink(input.bedpe, output.bedpe, in_module=True)
 
 rule _gridss_output_somatic_vcf:
     input:
@@ -506,11 +526,11 @@ rule _gridss_output_somatic_vcf:
         filtered_tbi = CFG["dirs"]["outputs"] + "vcf/{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}.gridss_somatic_filtered.vcf.gz.tbi", 
         bedpe = CFG["dirs"]["outputs"] + "bedpe/{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}.gridss_somatic_filtered.bedpe"
     run:
-        op.relative_symlink(input.somatic, output.somatic)
-        op.relative_symlink(input.somatic_tbi, output.somatic_tbi)
-        op.relative_symlink(input.filtered, output.filtered)
-        op.relative_symlink(input.filtered_tbi, output.filtered_tbi)
-        op.relative_symlink(input.bedpe, output.bedpe)
+        op.relative_symlink(input.somatic, output.somatic, in_module=True)
+        op.relative_symlink(input.somatic_tbi, output.somatic_tbi, in_module=True)
+        op.relative_symlink(input.filtered, output.filtered, in_module=True)
+        op.relative_symlink(input.filtered_tbi, output.filtered_tbi, in_module=True)
+        op.relative_symlink(input.bedpe, output.bedpe, in_module=True)
 
 def _gridss_predict_output(wildcards): 
     """Request symlinks for all VCF files.

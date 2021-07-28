@@ -22,7 +22,7 @@ setup(
     license=about["__license__"],
     packages=["oncopipe"],
     package_dir={"oncopipe": pkg_path},
-    install_requires=["pyyaml", "pandas", "snakemake>=5.4,<5.19"],
+    install_requires=["pyyaml", "pandas", "snakemake>=5.31", "packaging"],
     zip_safe=False,
     python_requires=">=3.6.0",
     classifiers=[

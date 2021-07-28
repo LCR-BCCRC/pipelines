@@ -1,0 +1,66 @@
+lcr-modules:
+    _shared:
+        lcr-modules: "../"
+        lcr-scripts: "../../lcr-scripts/"
+        root_output_dir: "results/"
+        scratch_directory: "scratch/"
+
+    picard_qc:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+        switches:
+            capture_intervals:
+                _default: "reference/exomes/grch37/interval/target_regions.nochr_intervals.txt"
+                # if 'capture_kit_id' is a column in samples.tsv and contain more than one kit_id, specify each kit using the values in the column. e.g. and add the corresponding bed file if needed
+                # S07604624: "reference/exomes/grch37/interval/S07604624_intervals.txt"
+                # <grch38_kit>: "reference/exomes/grch38/interval/<grch38_kit>_intervals.txt"
+
+    salmon:
+        inputs:
+            sample_fastq_1: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read1.fastq.gz"
+            sample_fastq_2: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read2.fastq.gz"
+        transcriptome:
+            quant_to: "hg38"
+
+    star:
+        inputs:
+            sample_fastq_1: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read1.fastq.gz"
+            sample_fastq_2: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read2.fastq.gz"
+        scratch_subdirectories: []
+
+    bam2fastq:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+        temp_outputs: True # fastq outputs will be temporary
+
+    manta:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+
+    mixcr:
+        inputs:
+            sample_fastq_1: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read1.fastq.gz"
+            sample_fastq_2: "results/bam2fastq-1.2/01-fastq/{seq_type}/{sample_id}.read2.fastq.gz"
+            # Path to the directory where MIXCR should be installed
+            mixcr_exec: "data"
+
+    pathseq:
+        inputs:
+            sample_bam: "data/{sample_id}.bam"
+            sample_bai: "data/{sample_id}.bam.bai"
+
+        options:
+            min_read_length: 49
+            ebv_cutoff: [0.00004, 0.00008]
+
+    utils:
+        inputs:
+            bed:
+                grch37: "data/exome_bed/hg19/target_regions.nochr.bed" # make sure this corresponds with config["lcr-modules"]["picard_qc"]["inputs"]["intervals"]
+                # if testing on GSC, use this file: "/projects/dscott_prj/CCSRI_1500/exomes/ref/agilent/hg19/target_regions.nochr.bed"
+        mem_mb:
+            bam_sort: 48000
+        threads:
+            bam_sort: 12
