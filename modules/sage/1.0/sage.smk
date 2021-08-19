@@ -38,7 +38,7 @@ if version.parse(current_version) < version.parse(min_oncopipe_version):
 # `CFG` is a shortcut to `config["lcr-modules"]["sage"]`
 CFG = op.setup_module(
     name = "sage",
-    version = "1.0",
+    version = "1.1",
     subdirectories = ["inputs", "sage", "vcf", "outputs"]
 )
 
@@ -125,8 +125,8 @@ rule _run_sage:
         tumour_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{tumour_id}.bam",
         normal_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{normal_id}.bam",
         fasta = str(rules._input_references.output.genome_fa),
-        hotspots = str(rules._download_sage_references.output.hotspots),
-        panel_bed = str(rules._download_sage_references.output.panel_bed),
+        hotspots = rules._download_sage_references.output.hotspots,
+        panel_bed = lambda w: get_capture_space(w.tumour_id, w.normal_id, w.genome_build, w.seq_type, "bgzip", default = str(rules._download_sage_references.output.panel_bed)),
         high_conf_bed = str(rules._download_sage_references.output.high_conf_bed)
     output:
         vcf = temp(CFG["dirs"]["sage"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/{tumour_id}--{normal_id}--{pair_status}.vcf"),

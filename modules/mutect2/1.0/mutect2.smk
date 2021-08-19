@@ -73,7 +73,7 @@ rule _mutect2_get_sm:
         r"sed 's/.*SM:\([^\t]*\).*/\1/g'"" | uniq > {output.sm} 2> {log.stderr}"
 
 
-# Launces Mutect2 in matched and unmatched mode
+# Launches Mutect2 in matched and unmatched mode
 rule _mutect2_run_matched_unmatched:
     input:
         tumour_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{tumour_id}.bam",

@@ -1,0 +1,14 @@
+name: test-tabix
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1
+  - _openmp_mutex=4.5
+  - libgcc-ng=9.2.0
+  - libgomp=9.2.0
+  - tabix=0.2.6
+  - zlib=1.2.11
+prefix: /home/bgrande/miniconda3/envs/test-tabix
+

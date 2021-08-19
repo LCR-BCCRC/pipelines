@@ -1,0 +1,16 @@
+name: bedtools
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1
+  - _openmp_mutex=4.5
+  - bedtools=2.29.2
+  - bzip2=1.0.8
+  - coreutils=8.31
+  - libgcc-ng=9.3.0
+  - libgomp=9.3.0
+  - libstdcxx-ng=9.3.0
+  - xz=5.2.5
+  - zlib=1.2.11

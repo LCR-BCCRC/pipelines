@@ -19,7 +19,7 @@ import oncopipe as op
 # `CFG` is a shortcut to `config["lcr-modules"]["strelka"]`
 CFG = op.setup_module(
     name = "strelka",
-    version = "1.1",
+    version = "1.2",
     subdirectories = ["inputs", "chrom_bed", "strelka", "filtered", "outputs"]
 )
 
@@ -78,6 +78,7 @@ rule _strelka_input_vcf:
 
 
 # bgzip-compress and tabix-index the BED file to meet strelka requirement
+# DEPRICATED. MOVED TO REFERENCE WORKFLOW
 rule _strelka_index_bed:
     input:
         bed = reference_files("genomes/{genome_build}/genome_fasta/main_chromosomes.bed")
@@ -108,7 +109,6 @@ rule _strelka_configure_paired: # Somatic
         tumour_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{tumour_id}.bam",
         normal_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{normal_id}.bam",
         fasta = reference_files("genomes/{genome_build}/genome_fasta/genome.fa"),
-        bedz = str(rules._strelka_index_bed.output.bedz),
         indels = str(rules._strelka_input_vcf.output.vcf) if CFG["inputs"]["candidate_small_indels"] else str(rules._strelka_dummy_vcf.output)
     output:
         runwf = CFG["dirs"]["strelka"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/runWorkflow.py"
@@ -118,6 +118,7 @@ rule _strelka_configure_paired: # Somatic
     params:
         indel_arg = _strelka_get_indel_cli_arg(),
         opts = op.switch_on_wildcard("seq_type", CFG["options"]["configure"]),
+        bedz = lambda w: get_capture_space(w.tumour_id, w.normal_id, w.genome_build, w.seq_type, "bgzip", default="genomes/{genome_build}/genome_fasta/main_chromosomes.bed.gz")
     wildcard_constraints:
         pair_status = "matched|unmatched"
     conda:
@@ -128,7 +129,7 @@ rule _strelka_configure_paired: # Somatic
         --normalBam={input.normal_bam}
         --tumorBam={input.tumour_bam}
         --referenceFasta={input.fasta}
-       --callRegions={input.bedz}
+        --callRegions={params.bedz}
         --runDir=$(dirname {output.runwf})
         {params.indel_arg}
         {params.opts} 
@@ -139,15 +140,15 @@ rule _strelka_configure_paired: # Somatic
 rule _strelka_configure_unpaired: # germline
     input:
         tumour_bam = CFG["dirs"]["inputs"] + "bam/{seq_type}--{genome_build}/{tumour_id}.bam",
-        fasta = reference_files("genomes/{genome_build}/genome_fasta/genome.fa"),
-        bedz = str(rules._strelka_index_bed.output.bedz)
+        fasta = reference_files("genomes/{genome_build}/genome_fasta/genome.fa")
     output:
         runwf = CFG["dirs"]["strelka"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/runWorkflow.py"
     log:
         stdout = CFG["logs"]["strelka"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/strelka_configure.stdout.log",
         stderr = CFG["logs"]["strelka"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/strelka_configure.stderr.log"
     params:
-        opts = op.switch_on_wildcard("seq_type", CFG["options"]["configure"])
+        opts = op.switch_on_wildcard("seq_type", CFG["options"]["configure"]),
+        bedz = lambda w: get_capture_space(w.tumour_id, w.normal_id, w.genome_build, w.seq_type, "bgzip", default="genomes/{genome_build}/genome_fasta/main_chromosomes.bed.gz")
     message:
         "WARNING: {wildcards.seq_type} sample ({wildcards.tumour_id}) is being processed using Strelka Germline workflow. Ensure pairing config for capture is set to run_unpaired_tumours_with: 'unmatched_normal' to run Strelka Somatic workflow"
     wildcard_constraints:
@@ -159,7 +160,7 @@ rule _strelka_configure_unpaired: # germline
         configureStrelkaGermlineWorkflow.py 
         --bam={input.tumour_bam}
         --referenceFasta={input.fasta}
-        --callRegions={input.bedz}
+        --callRegions={params.bedz}
         --runDir=$(dirname {output.runwf})
         {params.opts} 
         > {log.stdout} 2> {log.stderr}
@@ -242,7 +243,6 @@ rule _strelka_filter_combine:
         > {log.stdout} 2> {log.stderr} && 
         tabix -p vcf {output.vcf} >> {log.stdout} 2>> {log.stderr} 
         """)
-
 
 # infers name of output files depending on how Strelka was run
 def _strelka_get_output(wildcards):

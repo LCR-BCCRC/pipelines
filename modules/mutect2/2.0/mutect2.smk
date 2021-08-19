@@ -38,7 +38,7 @@ if version.parse(current_version) < version.parse(min_oncopipe_version):
 # `CFG` is a shortcut to `config["lcr-modules"]["mutect2"]`
 CFG = op.setup_module(
     name = "mutect2",
-    version = "2.0",
+    version = "2.1",
     subdirectories = ["inputs", "mutect2", "filter", "passed", "outputs"]
 )
 
@@ -112,7 +112,6 @@ def _mutect2_get_interval_cli_arg(
         return param
     return _mutect2_get_interval_cli_custom
 
-
 # Launces Mutect2 in matched and unmatched mode
 rule _mutect2_run_matched_unmatched:
     input:
@@ -137,7 +136,7 @@ rule _mutect2_run_matched_unmatched:
     params:
         mem_mb = lambda wildcards, resources: int(resources.mem_mb * 0.8), 
         opts = CFG["options"]["mutect2_run"], 
-        interval_arg = _mutect2_get_interval_cli_arg()
+        interval_arg = lambda w: get_capture_space(w.tumour_id, w.normal_id, w.genome_build, w.seq_type, "interval_list", default = _mutect2_get_interval_cli_arg())
     conda:
         CFG["conda_envs"]["gatk"]
     threads:
@@ -150,7 +149,7 @@ rule _mutect2_run_matched_unmatched:
         -I {input.tumour_bam} -I {input.normal_bam}
         -R {input.fasta} -normal "$(cat {input.normal_sm})" -O {output.vcf}
         --germline-resource {input.gnomad} 
-        -L {wildcards.chrom} {params.interval_arg} 
+        -L {wildcards.chrom} -L {params.interval_arg}
         -pon {input.pon} --f1r2-tar-gz {output.f1r2}
         > {log.stdout} 2> {log.stderr}
         """)

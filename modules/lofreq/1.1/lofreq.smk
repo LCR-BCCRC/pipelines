@@ -162,7 +162,7 @@ rule _lofreq_run_tumour:
         vcf_relaxed = rules._lofreq_link_to_preprocessed.output.vcf_relaxed,
         fasta = reference_files("genomes/{genome_build}/genome_fasta/genome.fa"),
         dbsnp = reference_files("genomes/{genome_build}/variation/dbsnp.common_all-151.vcf.gz"), #in our experience, this filter doesn't remove as many SNPs as one would expect
-        bed = op.switch_on_wildcard("seq_type", CFG["switches"]["regions_bed"])
+        bed = lambda w: get_capture_space(w.tumour_id, w.normal_id, w.genome_build, w.seq_type, "bed", default = op.switch_on_wildcard("seq_type", CFG["switches"]["regions_bed"]))
     output:
         vcf_snvs_filtered = CFG["dirs"]["lofreq_somatic"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/somatic_final_minus-dbsnp.snvs.vcf.gz",
         vcf_indels_filtered = CFG["dirs"]["lofreq_somatic"] + "{seq_type}--{genome_build}/{tumour_id}--{normal_id}--{pair_status}/somatic_final_minus-dbsnp.indels.vcf.gz",

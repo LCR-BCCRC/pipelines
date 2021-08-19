@@ -1,11 +1,12 @@
 ##### HEADER #####
 
+from collections import OrderedDict
+import os
 
 include: "reference_files_header.smk"
 
 
 ##### SEQUENCE AND INDICES #####
-
 
 rule get_genome_fasta_download:
     input: 
@@ -146,6 +147,20 @@ rule get_main_chromosomes_download:
             &&
         ln -srf {input.chrx} {output.chrx}
         """)
+
+rule compress_index_main_chromosomes:
+    input:
+        bed = rules.get_main_chromosomes_download.output.bed
+    output:
+        bgzip_bed = "genomes/{genome_build}/genome_fasta/main_chromosomes.bed.gz",
+        tabix = "genomes/{genome_build}/genome_fasta/main_chromosomes.bed.gz.tbi"
+    conda: CONDA_ENVS["tabix"]
+    shell:
+        op.as_one_line("""
+        bgzip -c {input.bed} > {output.bgzip_bed}
+            &&
+        tabix -p bed {output.bgzip_bed}
+        """)    
 
 
 rule get_main_chromosomes_withY_download:
@@ -343,9 +358,68 @@ rule create_salmon_index:
         > {log} 2>&1
         """)
 
+rule update_vcf_contigs:
+    input:
+        vcf = "genomes/{genome_build}/{parent_dir}/{basename}.vcf",
+        fai = rules.index_genome_fasta.output.fai
+    output:
+        vcf = "genomes/{genome_build}/{parent_dir}/{basename}.{genome_build}.vcf"
+    run:
+        # First, we need to identify the names and lengths of the contigs in for this reference
+        contig_lengths = OrderedDict()
+        with open(input.fai) as f:
+            for line in f:
+                line = line.rstrip("\n").rstrip("\r")  # Not really needed, but just to be safe with line endings
+                cols = line.split("\t")
+                contig_name = cols[0]
+                contig_length = int(cols[1])
+                contig_lengths[contig_name] = contig_length
+
+        # Now create a new VCF file with the updated ##CONTIG names
+        with open(input.vcf) as f, open(output.vcf, "w") as o:
+            for line in f:
+                if line.startswith("##CONTIG"):
+                    # Old contig entry, skip it
+                    continue
+                elif line.startswith("#CHROM"):
+                    # We have reached the column header. Lets put the new contig entries before
+                    # printing this (and the VCF entries) to file
+                    for contig, c_length in contig_lengths.items():
+                        vcf_c_entry = "##contig=<ID=%s,length=%s,assembly=%s>" % (contig, c_length, wildcards.genome_build)
+                        o.write(vcf_c_entry)
+                        o.write(os.linesep)
+                    # Now that we have ginished adding the contigs, write the header
+                    o.write(line)
+                else:
+                    o.write(line)
+
+rule get_mutect2_small_exac:
+    input:
+        vcf = get_download_file(rules.download_mutect2_small_exac.output.vcf)
+    output:
+        vcf = "genomes/{genome_build}/gatk/mutect2_small_exac.vcf"
+    shell:
+        "ln -srfT {input.vcf} {output.vcf}"
+
 rule get_af_only_gnomad_vcf:
     input:
         vcf = get_download_file(rules.download_af_only_gnomad_vcf.output.vcf)
+    output:
+        vcf = "genomes/{genome_build}/variation/af-only-gnomad.vcf"
+    shell:
+        "ln -srfT {input.vcf} {output.vcf}"
+
+rule get_mutect2_pon:
+    input:
+        vcf = get_download_file(rules.download_mutect2_pon.output.vcf)
+    output:
+        vcf = "genomes/{genome_build}/gatk/mutect2_pon.vcf"
+    shell:
+        "ln -srfT {input.vcf} {output.vcf}"
+
+rule prepare_af_only_gnomad_vcf:
+    input:
+        vcf = expand(rules.update_vcf_contigs.output.vcf, genome_build = "{genome_build}", parent_dir = "variation", basename = "af-only-gnomad")
     output:
         vcf = "genomes/{genome_build}/variation/af-only-gnomad.{genome_build}.vcf.gz"
     conda: CONDA_ENVS["samtools"]
@@ -356,9 +430,9 @@ rule get_af_only_gnomad_vcf:
         tabix {output.vcf}
         """)
 
-rule get_mutect2_pon:
+rule prepare_mutect2_pon:
     input:
-        vcf = get_download_file(rules.download_mutect2_pon.output.vcf)
+        vcf = expand(rules.update_vcf_contigs.output.vcf, genome_build = "{genome_build}", parent_dir = "gatk", basename = "mutect2_pon")
     output:
         vcf = "genomes/{genome_build}/gatk/mutect2_pon.{genome_build}.vcf.gz"
     conda: CONDA_ENVS["samtools"]
@@ -369,9 +443,9 @@ rule get_mutect2_pon:
         tabix {output.vcf}
         """)
 
-rule get_mutect2_small_exac:
+rule prepare_mutect2_small_exac:
     input:
-        vcf = get_download_file(rules.download_mutect2_small_exac.output.vcf)
+        vcf = expand(rules.update_vcf_contigs.output.vcf, genome_build = "{genome_build}", parent_dir = "gatk", basename = "mutect2_small_exac")
     output:
         vcf = "genomes/{genome_build}/gatk/mutect2_small_exac.{genome_build}.vcf.gz"
     conda: CONDA_ENVS["samtools"]
@@ -381,3 +455,157 @@ rule get_mutect2_small_exac:
             &&
         tabix {output.vcf}
         """)
+
+
+### FOR HANDLING CAPTURE SPACE/TARGETED SEQUENCING DATA ###
+# Added by Chris
+# What this *should* do (if I have written these rules correctly) is obtain a capture space BED file
+# check the contig names against the reference (and replace them as necessary), and generate a bgzip/tabix
+# indexed version an interval list
+
+def _check_capspace_provider(w):
+    # Checks to determine if both the capture space BED and associated reference genome
+    # are chr prefixed or not
+
+    # If this is specified as the "default", make sure we obtain the relevent capture space
+    default_key = "default-" + w.genome_build
+    if default_key not in config["capture_space"] and w.capture_space == default_key:
+        # aka if the user hasn't explicitly specified a default using a default name
+        capture_space = _get_default_capspace(w)
+    else:
+        capture_space = w.capture_space
+
+    genome_provider = config["genome_builds"][w.genome_build]["provider"]
+    bed_provider = config["capture_space"][capture_space]["provider"]
+    
+    # If the providers match (i.e. they share the same prefix), just use the downloaded version
+    if genome_provider == bed_provider:
+        return {'bed': expand(rules.download_capspace_bed.output.capture_bed, capture_space=capture_space, genome_build=w.genome_build)}
+    else:
+        # Prompt the prefix to be converted
+        chr_status = "chr" if genome_provider == "ucsc" else "no_chr"
+        return {'bed': expand(rules.add_remove_chr_prefix_bed.output.converted_bed, capture_space = capture_space, genome_build = w.genome_build, chr_status= chr_status)}
+
+def _get_default_capspace(w):
+
+    # Obtain the default capture space for this reference genome
+    candidates = []  # For debugging
+    
+
+    for capture_space, attributes in config["capture_space"].items():
+
+        # Does this capture region use the same reference genome?
+        if w.genome_build not in GENOME_VERSION_GROUPS[attributes["genome"]]:
+            continue
+        # Is this specified as a default?
+        if attributes["default"].lower() == "true":
+            # Specified as a default capture space, so store this
+            # note we are going to keep checking, in case multiple defaults were
+            # erronously specified
+            candidates.append(capture_space)
+
+    # Now that we have checked the reference config, check to ensure a viable default was specified
+    if len(candidates) == 0:  # i.e. we found no default for this genome build
+        raise AttributeError("A capture sample was specified which is aligned against \'%s\', but "
+            "no default capture space was specified for that reference genome. You can either specify "
+            "the capture space for each sample manually, or set a default using \'default=\"true\" in "
+            "the capture_space section of the reference config. Note the capture space must correspond to "
+            "\'%s\'" % (w.genome_build, w.genome_build))
+    elif len(candidates) > 1:  # Multiple defaults specified!
+        raise AttributeError("A capture sample was specified which is aligned against \'%s\', but "
+            "we found more that one capture space specified as the default for \'%s\'. Here are the "
+            "candidates: \'%s\'" % (w.genome_build, w.genome_build, ",".join(candidates)))
+
+    # Only one default found. Return it
+    return candidates[0]
+
+
+rule get_capspace_bed_download:
+    input:
+        unpack(_check_capspace_provider)
+    output:
+        capture_bed = "genomes/{genome_build}/capture_space/{capture_space}.bed"
+    conda: CONDA_ENVS["coreutils"]
+    shell:
+        "ln -srf {input.bed} {output.capture_bed}"
+
+
+rule sort_and_pad_capspace:
+    input:
+       capture_bed = rules.get_capspace_bed_download.output.capture_bed,
+       fai = rules.index_genome_fasta.output.fai
+    output:
+        padded_bed = "genomes/{genome_build}/capture_space/{capture_space}.padded.bed"
+    params:
+        padding_size = 100  # A pretty safe number. I would not chance unless you have good reason
+    log:
+        "genomes/{genome_build}/capture_space/{capture_space}.padded.bed.log"
+    conda: CONDA_ENVS["bedtools"]
+    shell:
+        "bedtools slop -b {params.padding_size} -i {input.capture_bed} -g {input.fai} | bedtools sort | bedtools merge > {output.padded_bed} 2> {log}"
+
+
+rule check_capspace_contigs:
+    input:
+        bed = rules.get_capspace_bed_download.output.capture_bed,
+        fai = rules.index_genome_fasta.output.fai
+    output:
+        contig_log = "genomes/{genome_build}/capture_space/{capture_space}.check_contigs.log"
+    run:
+        # Parse BED contigs
+        bed_contigs = set()
+        with open(input.bed) as f:
+            for line in f:
+                line = line.rstrip()
+                contig = line.split("\t")[0]
+                if contig not in bed_contigs:
+                    bed_contigs.add(contig)
+
+        # Parse fai contigs
+        fai_contigs = set()
+        with open(input.fai) as f:
+            for line in f:
+                line = line.rstrip()
+                contig = line.split('\t')[0]
+                if contig not in fai_contigs:
+                    fai_contigs.add(contig)
+
+        # Check the BED file for contigs that are not in the reference genome
+        missing_contigs = list(x for x in bed_contigs if x not in fai_contigs)
+        with open(output.contig_log, "w") as o:
+            if len(missing_contigs) == 0:
+                o.write("No contigs missing from reference")
+            else:
+                o.write("The following contigs were missing from the reference\n")
+                o.write("\n".join(missing_contigs))
+            o.write("\n")
+
+
+rule compress_index_capspace_bed:
+    input:
+        capture_bed = rules.sort_and_pad_capspace.output.padded_bed
+    output:
+        bgzip_bed = "genomes/{genome_build}/capture_space/{capture_space}.padded.bed.gz",
+        tabix = "genomes/{genome_build}/capture_space/{capture_space}.padded.bed.gz.tbi"
+    log:
+        "genomes/{genome_build}/capture_space/{capture_space}.padded.bed.gz.log"
+    conda: CONDA_ENVS["tabix"]
+    shell:
+        op.as_one_line("""
+        bgzip -c {input.capture_bed} > {output.bgzip_bed}
+            &&
+        tabix -p bed {output.bgzip_bed}
+        """)
+
+rule create_interval_list:
+    input:
+        bed = rules.sort_and_pad_capspace.output.padded_bed,
+        sd = rules.create_gatk_dict.output.dict
+    output:
+        interval_list = "genomes/{genome_build}/capture_space/{capture_space}.padded.interval_list"
+    log:
+        "genomes/{genome_build}/capture_space/{capture_space}.padded.interval_list.log"
+    conda: CONDA_ENVS["gatk"]
+    shell:
+        "gatk BedToIntervalList --INPUT {input.bed} -SD {input.sd} -O {output.interval_list} > {log} 2>&1"
+

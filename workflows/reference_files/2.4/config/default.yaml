@@ -27,6 +27,24 @@ genome_builds:
         version: "grch37"
         provider: "ensembl"
         genome_fasta_url: "https://www.bcgsc.ca/downloads/lcr-modules/genome_fastas/hs37d5.fa"
+    hg19-reddy:
+        # Version of hg19 with chrM at the start, and chrM with a length of 16569bp. Used for the Reddy dataset
+        version: "grch37"
+        provider: "ucsc"
+        genome_fasta_url: "https://www.bcgsc.ca/downloads/lcr-modules/genome_fastas/hg19-reddy.fa"
+
+capture_space:
+    idt-xgen1-hg38:
+    # IDT xgenome exome panel v1 (non-boosted)
+        genome: "grch38"
+        provider: "ucsc"
+        default: "false"
+        capture_bed_url: "https://www.bcgsc.ca/downloads/lcr-modules/genome_fastas/capture_bed/IDT_xgen_exome_panel_v1.GRCh38.bed6"
+    agilent-sureselect-hg19-reddy:
+        genome: "grch37"
+        provider: "ucsc"
+        default: "true"
+        capture_bed_url: "https://www.bcgsc.ca/downloads/lcr-modules/genome_fastas/capture_bed/agilent_sureselect_all_exons_v5_and_utr.with_annotations.bed4"
 
 wildcard_values:
     gencode_release: ["33"]
@@ -76,6 +94,12 @@ tools:
     gsutil: 
         conda_env: "envs/gsutil-4.53.yaml"
         version: "4.53"
+    tabix:
+        conda_env: "envs/tabix-0.2.6.yaml"
+        version: "0.2.6"
+    bedtools:
+        conda_env: "envs/bedtools-2.29.2.yaml"
+        version: "2.29.2"
 
 cvbio_config:
     gtf: 
