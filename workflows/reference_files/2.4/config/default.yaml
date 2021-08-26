@@ -76,6 +76,9 @@ tools:
     gsutil: 
         conda_env: "envs/gsutil-4.53.yaml"
         version: "4.53"
+    sigprofiler:
+        conda_env: "envs/sigprofiler-1.1.yaml"
+        version: "1.1"
 
 cvbio_config:
     gtf: 

@@ -1,0 +1,92 @@
+lcr-modules:
+    
+    sigprofiler:
+
+        inputs:
+            # Available wildcards: {file}, {seq_type}, {genome_build}
+            maf: "__UPDATE__"
+
+            sample_set_table: "__UPDATE__"
+            samples_metadata: "__UPDATE__"
+
+            # Choose any combination of:  
+            # SBS6, SBS18, SBS24, SBS96, SBS288, SBS384, SBS4608, SBS1536, SBS6144,
+            # ID28, ID83, ID96, ID332, ID415, ID8628,
+            # DBS78, DBS150, DBS186, DBS1248, DBS2400, DBS2976
+            type: ['SBS96']
+
+            generator: "{MODSDIR}/src/python/run_generator.py"
+            extractor: "{MODSDIR}/src/python/run_extractor.py"
+
+        sigpro_genomes:
+            grch37: "GRCh37"
+            grch38: "GRCh38"
+            hg19: "GRCh37"
+            hg38: "GRCh38"
+            hs37d5: "GRCh37"
+            grch38-legacy: "GRCh38"
+            hg38-panea: "GRCh38"
+
+        scratch_subdirectories: []
+
+        conda_envs:
+            sigprofiler: "{MODSDIR}/envs/sigprofiler-1.1.yaml"
+
+        options:
+            estimate:
+                --nmf_replicates 30
+                --matrix_normalization gmm
+                --nmf_init nndsvd_min
+                --resample True
+                --precision single
+                --min_nmf_iterations 10000
+                --max_nmf_iterations 1000000
+                --nmf_test_conv 10000
+                --nmf_tolerance 1e-15
+                --stability 0.8
+                --min_stability 0.2
+                --combined_stability 1.0
+                --cosmic_version 3.1
+                --de_novo_fit_penalty 0.02
+                --nnls_add_penalty 0.05
+                --nnls_remove_penalty 0.01
+                --initial_remove_penalty 0.05
+                --refit_denovo_signatures True
+            extract:
+                --nmf_replicates 200
+                --matrix_normalization gmm
+                --nmf_init nndsvd_min
+                --resample True
+                --precision single
+                --min_nmf_iterations 10000
+                --max_nmf_iterations 1000000
+                --nmf_test_conv 10000
+                --nmf_tolerance 1e-15
+                --stability 0.8
+                --min_stability 0.2
+                --combined_stability 1.0
+                --cosmic_version 3.1
+                --de_novo_fit_penalty 0.02
+                --nnls_add_penalty 0.05
+                --nnls_remove_penalty 0.01
+                --initial_remove_penalty 0.05
+                --refit_denovo_signatures True
+
+        threads:
+            generator: 1
+            estimate: 25
+            extract: 25
+        mem_mb:
+            generator: 20000
+            estimate: 1000
+            extract: 1000
+
+        pairing_config:
+            genome:
+                run_paired_tumours: True
+                run_unpaired_tumours_with: "unmatched_normal"
+                run_paired_tumours_as_unpaired: False
+            capture:
+                run_paired_tumours: True
+                run_unpaired_tumours_with: "unmatched_normal"
+                run_paired_tumours_as_unpaired: False
