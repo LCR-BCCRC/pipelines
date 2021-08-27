@@ -1,0 +1,51 @@
+lcr-modules:
+    
+    jabba:
+
+        inputs:
+            # Available wildcards: {seq_type} {genome_build} {sample_id}
+            sample_bam: "__UPDATE__"
+            sample_bai: "__UPDATE__"
+
+            # SV caller VCF v4.2 file. Available wildcards:
+            # {seq_type} {genome_build} {tumour_id} {normal_id} {pair_status}
+            manta_junc: "__UPDATE__"
+            gridss_junc: "__UPDATE__"
+
+            merge_svs: "{MODSDIR}/src/R/merge_svs.R"
+            make_pon: "{MODSDIR}/src/R/make_pon.R"
+            make_germline: "{MODSDIR}/src/R/make_germline_filter.R"
+            run_custom_fc: "{MODSDIR}/src/R/run_custom_fragcounter.R"
+            run_jabba_main: "{MODSDIR}/src/R/run_jabba_main.R"
+
+        scratch_subdirectories: []
+
+        # CPLEX_DIR is path to local CPLEX installation. See
+        # https://github.com/mskilab/JaBbA#installation for
+        # instructions.
+        CPLEX_DIR: "__UPDATE__"
+
+        conda_envs:
+            jabba: "{MODSDIR}/envs/jabba.yaml"
+
+        threads:
+            merge_svs: 1
+            fragcounter: 1
+            make_pon: 10
+            dryclean: 12
+            make_germline: 1
+            jabba: 10
+
+        mem_mb:
+            merge_svs: 4096
+            fragcounter: 4096
+            make_pon: 30000
+            dryclean: 30000
+            make_germline: 30000
+            jabba: 30000
+
+        pairing_config:
+            genome:
+                run_paired_tumours: True
+                run_unpaired_tumours_with: null
+                run_paired_tumours_as_unpaired: False

@@ -347,6 +347,110 @@ rule download_sdf:
         mv $(dirname {output.sdf})/{params.build}/* {output.sdf}
         """)
 
+rule download_ucsc_chrom_sizes:
+    output:
+        txt = 'downloads/chrom_sizes/sizes.{version}.txt'
+    params:
+        provider = 'ucsc',
+        url = lambda w: {
+            'grch37': 'hg19',
+            'grch38': 'hg38'
+        }[w.version]
+    shell:
+        "wget -qO {output.txt} http://hgdownload.cse.ucsc.edu/goldenpath/{params.url}/bigZips/{params.url}.chrom.sizes"
+
+rule make_1kb_genome_bed:
+    input:
+        txt = rules.download_ucsc_chrom_sizes.output.txt
+    output:
+        bed = 'downloads/genome_beds_1kb/1kb.{version}.bed'
+    params:
+        provider = 'ucsc',
+        url = lambda w: {
+            'grch37': 'hg19',
+            'grch38': 'hg38'
+        }[w.version]
+    conda: CONDA_ENVS['bedtools']
+    shell:
+        op.as_one_line("""
+        grep -P '^chr[12]?[0-9XY]\t' {input.txt}
+            |
+        bedtools makewindows -g - -w 1000
+            |
+        bedtools sort
+            >
+        {output.bed}
+        """)
+
+rule download_ucsc_gc:
+    input:
+        sizes = rules.download_ucsc_chrom_sizes.output.txt,
+        bed = rules.make_1kb_genome_bed.output.bed
+    output:
+        bed = 'downloads/gc1000_beds/gc1000.{version}.bed'
+    params:
+        provider = 'ucsc',
+        url = lambda w: {
+            'grch37': 'hg19',
+            'grch38': 'hg38'
+        }[w.version]
+    conda: CONDA_ENVS["wiggletools"]
+    resources:
+        mem_mb = 18000
+    shell:
+        op.as_one_line("""
+        wget -qO downloads/gc1000_beds/{wildcards.version}.gc5Base.wig.gz http://hgdownload.cse.ucsc.edu/goldenpath/{params.url}/bigZips/{params.url}.gc5Base.wigVarStep.gz
+            &&
+        wigToBigWig -clip downloads/gc1000_beds/{wildcards.version}.gc5Base.wig.gz {input.sizes} downloads/gc1000_beds/{wildcards.version}.gc5Base.bw
+            &&
+        wiggletools apply_paste {output.bed} meanI {input.bed} downloads/gc1000_beds/{wildcards.version}.gc5Base.bw
+        """)
+
+rule download_ucsc_map:
+    input:
+        bed = rules.make_1kb_genome_bed.output.bed
+    output:
+        bed = 'downloads/map1000_beds/map1000.{version}.bed'
+    params:
+        provider = 'ucsc',
+        url = lambda w: {
+            'grch37': 'http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeMapability/wgEncodeCrgMapabilityAlign100mer.bigWig',
+            'grch38': 'http://hgdownload.soe.ucsc.edu/gbdb/hg38/hoffmanMappability/k100.Umap.MultiTrackMappability.bw'
+        }[w.version]
+    conda: CONDA_ENVS['wiggletools']
+    resources:
+        mem_mb = 8000
+    shell:
+        op.as_one_line("""
+        wget -qO downloads/map1000_beds/{wildcards.version}.map.bw {params.url}
+            &&
+        wiggletools apply_paste {output.bed} meanI {input.bed} downloads/map1000_beds/{wildcards.version}.map.bw
+        """)
+
+
+rule download_par_bed:
+    output:
+        bed = 'downloads/par_region/PAR.{version}.bed'
+    params:
+        provider = 'ucsc'
+    run:
+        file = open(output.bed, 'w')
+        par_region = []
+        if wildcards.version == 'grch37':
+            par_region.append(['chrX','60001','2699520'])
+            par_region.append(['chrX','154931044','155260560'])
+            par_region.append(['chrY','10001','2649520'])
+            par_region.append(['chrY','59034050','59363566'])
+        elif wildcards.version == 'grch38':
+            par_region.append(['chrX','10000','2781479'])
+            par_region.append(['chrX','155701382','156030895'])
+            par_region.append(['chrY','10000','2781479'])
+            par_region.append(['chrY','56887902','57217415'])
+        with open(output.bed, 'w') as f:
+            for i in par_region:
+                f.write('\t'.join(i) + '\n')
+            
+
 
 ##### FUNCTIONS #####
 

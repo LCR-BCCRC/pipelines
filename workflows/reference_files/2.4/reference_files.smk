@@ -4,6 +4,16 @@
 include: "reference_files_header.smk"
 
 
+##### SRC/ETC DIRECTORY #####
+
+
+for k,v in config['pon'].items():
+    config['pon'][k] = os.path.join(workflow.basedir, v)
+
+for k,v in config['jabba'].items():
+    config['jabba'][k] = os.path.join(workflow.basedir, v)
+
+
 ##### SEQUENCE AND INDICES #####
 
 
@@ -197,6 +207,210 @@ rule calc_gc_content:
             |
         gzip -c > {output.wig}
         """)
+
+rule get_jabba_gc_rds:
+    input:
+        bed = get_download_file(rules.download_ucsc_gc.output.bed),
+        txt = get_download_file(rules.download_ucsc_chrom_sizes.output.txt)
+    output:
+        rds = "genomes/{genome_build}/annotations/jabba/gc1000.rds"
+    conda: CONDA_ENVS["rtracklayer"]
+    shell:
+        op.as_one_line("""
+        Rscript
+            -e 'library(rtracklayer); gr <- import("{input.bed}")'
+            -e 'names(mcols(gr))[1] <- "score"; gr[gr$score == "nan",]$score <- 0'
+            -e 'gr$score <- as.numeric(gr$score)'
+            -e 'sizes <- read.delim("{input.txt}", stringsAsFactors = FALSE, col.names = c("chrom", "length"), header = FALSE)'
+            -e 'sizes <- unlist(split(as.numeric(sizes$length), sizes$chrom))[levels(seqnames(gr))]'
+            -e 'seqlengths(gr) <- sizes'
+            -e 'saveRDS(gr, "{output.rds}")'
+        """)
+
+rule get_jabba_map_rds:
+    input:
+        bed = get_download_file(rules.download_ucsc_map.output.bed),
+        txt = get_download_file(rules.download_ucsc_chrom_sizes.output.txt)
+    output:
+        rds = "genomes/{genome_build}/annotations/jabba/map1000.rds"
+    conda: CONDA_ENVS["rtracklayer"]
+    shell:
+        op.as_one_line("""
+        Rscript
+            -e 'library(rtracklayer); gr <- import("{input.bed}")'
+            -e 'names(mcols(gr))[1] <- "score"; gr[gr$score == "nan",]$score <- 0'
+            -e 'gr$score <- as.numeric(gr$score)'
+            -e 'sizes <- read.delim("{input.txt}", stringsAsFactors = FALSE, col.names = c("chrom", "length"), header = FALSE)'
+            -e 'sizes <- unlist(split(as.numeric(sizes$length), sizes$chrom))[levels(seqnames(gr))]'
+            -e 'seqlengths(gr) <- sizes'
+            -e 'saveRDS(gr, "{output.rds}")'
+        """)
+
+rule get_par_rds:
+    input:
+        bed = get_download_file(rules.download_par_bed.output.bed),
+        txt = get_download_file(rules.download_ucsc_chrom_sizes.output.txt)
+    output:
+        rds = "genomes/{genome_build}/annotations/jabba/PAR_{genome_build}.rds"
+    conda: CONDA_ENVS["rtracklayer"]
+    shell:
+        op.as_one_line(""" 
+        Rscript 
+            -e 'library(rtracklayer); gr <- import("{input.bed}")'
+            -e 'sizes <- read.delim("{input.txt}", stringsAsFactors = FALSE, col.names = c("chrom", "length"), header = FALSE)'
+            -e 'sizes <- unlist(split(as.numeric(sizes$length), sizes$chrom))[levels(seqnames(gr))]'
+            -e 'seqlengths(gr) <- sizes'
+            -e 'saveRDS(gr, "{output.rds}")'
+        """)
+
+
+##### JaBbA PON generation ######
+
+
+rule install_fragcounter:
+    output:
+        complete = "downloads/jabba_prereqs/fragcounter.installed"
+    conda: CONDA_ENVS["jabba"]
+    shell:
+        op.as_one_line("""
+        Rscript -e 'Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS = TRUE)'
+                -e 'if (!"fragCounter" %in% rownames(installed.packages())) {{remotes::install_github("morinlab/fragCounter", upgrade = TRUE, force = TRUE)}}'
+                -e 'library(fragCounter)'
+            &&
+        touch {output.complete}
+        """)
+
+
+rule install_dryclean:
+    input:
+        installed = "downloads/jabba_prereqs/fragcounter.installed"
+    output:
+        complete = "downloads/jabba_prereqs/dryclean.installed"
+    conda: CONDA_ENVS["jabba"]
+    shell:
+        op.as_one_line("""
+        Rscript -e 'Sys.setenv(R_REMOTES_NO_ERRORS_FROM_WARNINGS = TRUE)'
+                -e 'if (!"gUtils" %in% rownames(installed.packages())) {{remotes::install_github("mskilab/gUtils", upgrade = FALSE)}}'
+                -e 'if (!"dryclean" %in% rownames(installed.packages())) {{remotes::install_github("morinlab/dryclean", upgrade = FALSE)}}'
+                -e 'library(dryclean)'
+            &&
+        touch {output.complete}
+        """)
+
+# Use normal samples specified in config['pon'] table
+NORMALS = {k : op.load_samples(v) for k,v in config['pon'].items()}
+NORMALS = {k : dict(zip(v.sample_id, v.data_path)) for k,v in NORMALS.items()}
+
+
+rule jabba_pon_symlink_normal_bams:
+    output: 
+        bam = "genomes/{genome_build}/jabba/pon/00-normal_bams/{sample_id}.bam",
+        bai = "genomes/{genome_build}/jabba/pon/00-normal_bams/{sample_id}.bam.bai"
+    params:
+        bam = lambda wc: NORMALS[wc.genome_build][wc.sample_id]
+    shell: 
+        "ln -sf {params.bam} {output.bam}; "
+        "ln -sf {params.bam}.bai {output.bai}"
+
+# Run fragcounter on normals to get GC/mappability corrected coverage values
+rule jabba_pon_run_fragcounter:
+    input:
+        installed = str(rules.install_fragcounter.output.complete),
+        bam = str(rules.jabba_pon_symlink_normal_bams.output.bam),
+        gc = str(rules.get_jabba_gc_rds.output.rds),
+        map = str(rules.get_jabba_map_rds.output.rds),
+        ref = str(rules.download_genome_fasta.output.fasta) 
+    output:
+        rds = "genomes/{genome_build}/jabba/pon/01-fragcounter/run/{sample_id}/cov.rds"
+    conda: CONDA_ENVS["jabba"]
+    threads: 1
+    resources:
+        mem_mb = 4096
+    shell:
+        op.as_one_line("""
+        FRAG=$(Rscript -e 'cat(paste0(installed.packages()["fragCounter", "LibPath"], "/fragCounter/extdata/"))'); $FRAG/frag -b {input.bam} -r {input.ref} -w 1000 -d `dirname {input.gc}` -o `dirname {output.rds}`
+        """)
+
+
+rule jabba_pon_symlink_fragcounter:
+    input:
+        rds = str(rules.jabba_pon_run_fragcounter.output.rds)
+    output:
+        rds = "genomes/{genome_build}/jabba/pon/01-fragcounter/cov/{sample_id}.cov.rds"
+    run:
+        op.relative_symlink(input.rds, output.rds)
+
+# Use dryclean to create panel-of-normal (PON) from fragcounter coverages
+rule jabba_pon_make_pon:
+    input:
+        installed = str(rules.install_dryclean.output.complete),
+        par = str(rules.get_par_rds.output.rds),
+        rds = lambda wc: expand("genomes/{{genome_build}}/jabba/pon/01-fragcounter/cov/{sample_id}.cov.rds",
+              sample_id = NORMALS[wc.genome_build].keys()),
+        make_pon = config['jabba']['make_pon']
+    output:
+        tbl = "genomes/{genome_build}/jabba/pon/normal_table.rds",
+        pon = "genomes/{genome_build}/jabba/pon/detergent.rds"
+    params:
+        choose_samples = 'cluster'
+    conda: CONDA_ENVS["jabba"]
+    threads: 10
+    resources:
+        mem_mb = 30000
+    shell:
+        op.as_one_line("""
+        Rscript {input.make_pon} {threads} `dirname {input.rds[0]}` {output.tbl} {output.pon} {input.par} {wildcards.genome_build} {params.choose_samples}
+        """)
+
+# Improve coverage signal fidelity by running each normal against PON
+# Serves to identify and separate background variations (noise) from foreground variation (signal)
+rule jabba_pon_run_dryclean_normal:
+    input:
+        installed = str(rules.install_dryclean.output.complete),
+        rds = str(rules.jabba_pon_run_fragcounter.output.rds),
+        pon = str(rules.jabba_pon_make_pon.output.pon)
+    output:
+        rds = "genomes/{genome_build}/jabba/pon/02-dryclean/run/{sample_id}/drycleaned.cov.rds"
+    conda: CONDA_ENVS["jabba"]
+    threads: 12
+    resources:
+       mem_mb = 30000
+    shell:
+        op.as_one_line("""
+        Rscript -e 'library(dryclean); library(parallel)'
+                -e 'samp <- readRDS("{input.rds}")'
+                -e 'decomp <- start_wash_cycle(cov = samp, detergent.pon.path = "{input.pon}", whole_genome = TRUE, mc.cores = {threads}, germline.filter = FALSE)'
+                -e 'saveRDS(decomp, "{output.rds}")'
+        """)
+
+
+rule jabba_pon_link_dryclean_normal_rds:
+    input:
+        rds = "genomes/{genome_build}/jabba/pon/02-dryclean/run/{sample_id}/drycleaned.cov.rds"
+    output:
+        rds = "genomes/{genome_build}/jabba/pon/02-dryclean/cov/{sample_id}.drycleaned.cov.rds"
+    run:
+        op.relative_symlink(input.rds, output.rds)
+
+# Use dryclean normals to identify germline regions which will be used
+# on tumour data to find germline regions.
+rule jabba_pon_make_germline_filter:
+    input:
+        installed = str(rules.install_dryclean.output.complete),
+        tbl = str(rules.jabba_pon_make_pon.output.tbl),
+        rds = lambda wc: expand("genomes/{{genome_build}}/jabba/pon/02-dryclean/cov/{sample_id}.drycleaned.cov.rds", sample_id = NORMALS[wc.genome_build].keys()),
+        make_germline = config["jabba"]["make_germline"]
+    output:
+        germline = "genomes/{genome_build}/jabba/pon/germline.markers.rds"
+    conda: CONDA_ENVS["jabba"]
+    threads: 25
+    resources:
+        mem_mb = 30000
+    shell:
+        op.as_one_line("""
+        Rscript {input.make_germline} {input.tbl} `dirname {input.rds[0]}` {output.germline} 0.5 0.1 {threads}
+        """)
+
 
 ##### VARIATION #####
 

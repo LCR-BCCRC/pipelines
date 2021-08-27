@@ -1,0 +1,41 @@
+name: wiggletools-1.2.10
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - bzip2=1.0.8=h7f98852_4
+  - c-ares=1.17.1=h7f98852_1
+  - ca-certificates=2020.12.5=ha878542_0
+  - curl=7.76.0=h979ede3_0
+  - gsl=2.6=he838d99_2
+  - htslib=1.12=h9093b5e_1
+  - krb5=1.17.2=h926e7f8_0
+  - libbigwig=0.4.6=h1b8c3c0_1
+  - libblas=3.9.0=8_openblas
+  - libcblas=3.9.0=8_openblas
+  - libcurl=7.76.0=hc4aaa36_0
+  - libdeflate=1.7=h7f98852_5
+  - libedit=3.1.20191231=he28a2e2_2
+  - libev=4.33=h516909a_1
+  - libgcc-ng=9.3.0=h2828fa1_18
+  - libgfortran-ng=9.3.0=hff62375_18
+  - libgfortran5=9.3.0=hff62375_18
+  - libgomp=9.3.0=h2828fa1_18
+  - libnghttp2=1.43.0=h812cca2_0
+  - libopenblas=0.3.12=pthreads_h4812303_1
+  - libpng=1.6.37=h21135ba_2
+  - libssh2=1.9.0=ha56f1ee_6
+  - libstdcxx-ng=9.3.0=h6de172a_18
+  - libuuid=2.32.1=h7f98852_1000
+  - mysql-connector-c=6.1.11=h6eb9d5d_1007
+  - ncurses=6.2=h58526e2_4
+  - openssl=1.1.1k=h7f98852_0
+  - tk=8.6.10=h21135ba_1
+  - ucsc-wigtobigwig=377=h0b8a92a_2
+  - wiggletools=1.2.10=he98db58_1
+  - xz=5.2.5=h516909a_1
+  - zlib=1.2.11=h516909a_1010
+prefix: /home/prasathp/miniconda3/envs/wiggletools-1.2.10
