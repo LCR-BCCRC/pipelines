@@ -24,19 +24,51 @@ lcr-modules:
                 ichorCNA_normalPanel: 
                     "1000000": "inst/extdata/HD_ULP_PoN_{genome_build}_1Mb_median_normAutosome_median.rds"
                     "500000": "inst/extdata/HD_ULP_PoN_{genome_build}_500kb_median_normAutosome_median.rds"
+                # relative to ichorCNA directory (in 00-inputs/ichorCNA/)
+                # ichorCNA has a preset panel of normal (PoN) with the module, but generating your own PoN is usedful for reducing noise and improving accuracy if needed.
+                # Note: use ichorCNA's createPanelOfNormals.R in 00-inputs/ichorCNA/scripts/
+                # i.e. Rscript createPanelOfNormals.R --filelist /path/to/wig_files.txt --gcWig /path/to/gc.wig --mapWig /path/to/map.wig --centromere /path/to/centromeres_file.txt --outfile base_outfile_name
+                # where, filelist is a list containing a list of paths to all normals in the panel
+                # gcWig is a GC wig for the reference genome (if you make a new one, update the ichorCNA_gcWig_custom)
+                # mapWig is a mappability wig for the reference genome (if you make a new one, update the ichorCNA_mapWig_custom)
+                # centromere is a file containing centromere locations (see ichorCNA_centromere parameter)
+                # optional: --exons.bed can be used if target panel used
+                # the output file is an .rds file
+                ichorCNA_normalPanel_custom:
+                    grch37: ""
+                    hg19: ""
+                    grch38: ""
+                    hg38: ""
+                    hs37d5: ""
                 # must use gc wig file corresponding to same binSize (required)
                 ichorCNA_gcWig:
                     "1000000": "inst/extdata/gc_{genome_build}_1000kb.wig"
                     "500000": "inst/extdata/gc_{genome_build}_500kb.wig"
                     "50000": "inst/extdata/gc_{genome_build}_50kb.wig"
                     "10000": "inst/extdata/gc_{genome_build}_10kb.wig"
+                # relative to ichorCNA directory (in 00-inputs/ichorCNA/)
+                # create a new gcWig if binSize changes
+                ichorCNA_gcWig_custom: # must create an empty one for each genome_build you include
+                    grch37: ""
+                    hg19: ""
+                    grch38: ""
+                    hg38: ""
+                    hs37d5: ""
                 # must use map wig file corresponding to same binSize (required)
                 ichorCNA_mapWig:  
                     "1000000": "inst/extdata/map_{genome_build}_1000kb.wig"
                     "500000": "inst/extdata/map_{genome_build}_500kb.wig"
                     "50000": "inst/extdata/map_{genome_build}_50kb.wig"
                     "10000": "inst/extdata/map_{genome_build}_10kb.wig"
+                ichorCNA_mapWig_custom:
                 # use bed file if sample has targeted regions, eg. exome data (optional)
+                # relative to ichorCNA directory (in 00-inputs/ichorCNA/)
+                #create a new mapWig if binSize changes or if certain segments of the genome (high noise) regions require masking
+                    grch37: ""
+                    hg19: ""
+                    grch38: ""
+                    hg38: ""
+                    hs37d5: ""
                 ichorCNA_exons:  NULL
                 ichorCNA_centromere:  
                     grch37: "inst/extdata/GRCh37.p13_centromere_UCSC-gapTable.txt"
@@ -60,15 +92,19 @@ lcr-modules:
                     grch38: "paste0('chr', c(1:22))"
                     hg38: "paste0('chr', c(1:22))"
                 # non-tumor fraction parameter restart values; higher values should be included for cfDNA
+                # set to "c(0.95, 0.99, 0.995, 0.999)" for low tumour content samples
                 ichorCNA_normal:  "c(0.5,0.6,0.7,0.8,0.9,0.95)"
                 # ploidy parameter restart values
+                # set to ploidy "c(2)" for low tumour content cases
                 ichorCNA_ploidy:  "c(2,3,4)"
                 ichorCNA_estimateNormal:  TRUE
                 ichorCNA_estimatePloidy:  TRUE
+                # for low tumour content, set estimateClonality to FALSE and set scStates to "c()"
                 ichorCNA_estimateClonality: TRUE
                 # states to use for subclonal CN
                 ichorCNA_scStates:  "c(1,3)"
                 # set maximum copy number to use
+                # set to maxCN 3 for low tumour content - reducing state space will reduce complexity 
                 ichorCNA_maxCN:  5
                 # TRUE/FALSE to include homozygous deletion state # FALSE for low coverage libraries (ex. 0.1x) ; can turn on for higher coverage data (ex. >10x)
                 ichorCNA_includeHOMD: FALSE

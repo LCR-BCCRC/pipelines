@@ -294,6 +294,113 @@ def get_chromosomes_R(wildcards):
     stringEnd="')"
     return stringStart + chromosomesR + stringEnd
 
+# New functions just for specific alt-genome builds    
+def _which_gcwig(wildcards):
+    CFG = config['lcr-modules']['ichorcna']
+    this_genome_build = str(wildcards.genome_build)
+    try:
+        wigs = CFG["options"]["run"]["ichorCNA_gcWig_custom"][this_genome_build]
+    except NameError:
+        wigs = None
+    try:
+        wigs = CFG["options"]["run"]["ichorCNA_gcWig_custom"][wildcards.genome_build]
+    except NameError:
+        wigs = None
+    if wigs is not None and wigs != "":
+        return wigs
+    elif "38" in str({wildcards.genome_build}):
+        if "1000000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg38_1000kb.wig"
+        elif "500000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg38_500kb.wig"
+        elif "50000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg38_50kb.wig"
+        elif "10000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg38_10kb.wig"
+        else:
+            wig = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_gcWig"])
+            return wig
+    else:
+        if "1000000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg19_1000kb.wig"
+        elif "500000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg19_500kb.wig"
+        elif "50000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg19_50kb.wig"
+        elif "10000" in str({wildcards.binSize}):
+            return "inst/extdata/gc_hg19_10kb.wig"
+        else:
+            wig = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_gcWig"])
+            return wig
+
+def _which_mapwig(wildcards):
+    CFG = config['lcr-modules']['ichorcna']
+    this_genome_build = str(wildcards.genome_build)
+    try:
+        wigs = CFG["options"]["run"]["ichorCNA_mapWig_custom"][this_genome_build]
+    except NameError:
+        wigs = None
+    try:
+        wigs = CFG["options"]["run"]["ichorCNA_mapWig_custom"][wildcards.genome_build]
+    except NameError:
+        wigs = None
+    if wigs is not None and wigs != "":
+        return wigs
+    elif "38" in str({wildcards.genome_build}):
+        if "1000000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg38_1000kb.wig"
+        elif "500000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg38_500kb.wig"
+        elif "50000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg38_50kb.wig"
+        elif "10000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg38_10kb.wig"
+        else:
+            wig = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_mapWig"])
+            return wig
+    else:
+        if "1000000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg19_1000kb.wig"
+        elif "500000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg19_500kb.wig"
+        elif "50000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg19_50kb.wig"
+        elif "10000" in str({wildcards.binSize}):
+            return "inst/extdata/map_hg19_10kb.wig"
+        else:
+            wig = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_mapWig"])
+            return wig
+
+def _which_normPanel(wildcards):
+    CFG = config['lcr-modules']['ichorcna']
+    this_genome_build = str(wildcards.genome_build)
+    try:
+        rds = CFG["options"]["run"]["ichorCNA_normalPanel_custom"][this_genome_build]
+    except NameError:
+        rds = None
+    try:
+        rds = CFG["options"]["run"]["ichorCNA_normalPanel_custom"][wildcards.genome_build]
+    except NameError:
+        rds = None
+    if rds is not None and rds != "":
+        return rds
+    elif "38" in str({wildcards.genome_build}):
+        if "1000000" in str({wildcards.binSize}):
+            return "inst/extdata/HD_ULP_PoN_hg38_1Mb_median_normAutosome_median.rds"
+        elif "500000" in str({wildcards.binSize}):
+            return "inst/extdata/HD_ULP_PoN_hg38_500kb_median_normAutosome_median.rds"
+        else:
+            rds = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_normalPanel"])
+            return rds
+    else:
+        if "1000000" in str({wildcards.binSize}):
+            return "inst/extdata/HD_ULP_PoN_hg19_1Mb_median_normAutosome_median.rds"
+        elif "500000" in str({wildcards.binSize}):
+            return "inst/extdata/HD_ULP_PoN_hg19_1Mb_median_normAutosome_median.rds"
+        else:
+            rds = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_normalPanel"])
+            return rds
+
 rule _run_ichorcna:
     input:
         tum = CFG["dirs"]["readDepth"] + "{seq_type}--{genome_build}/{binSize}/wig/{tumour_id}.bin{binSize}.wig",
@@ -311,9 +418,9 @@ rule _run_ichorcna:
         name = "{tumour_id}",
         ploidy = CFG["options"]["run"]["ichorCNA_ploidy"],
         normal = CFG["options"]["run"]["ichorCNA_normal"],
-        gcwig = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_gcWig"]),
-        mapwig = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_mapWig"]),
-        normalpanel = op.switch_on_wildcard("binSize", CFG["options"]["run"]["ichorCNA_normalPanel"]),
+        gcwig = _which_gcwig,
+        mapwig = _which_mapwig,
+        normalpanel = _which_normPanel,
         estimateNormal = CFG["options"]["run"]["ichorCNA_estimateNormal"],
         estimatePloidy = CFG["options"]["run"]["ichorCNA_estimatePloidy"],
         estimateClonality = CFG["options"]["run"]["ichorCNA_estimateClonality"],
