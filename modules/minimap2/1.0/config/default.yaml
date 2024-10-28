@@ -1,0 +1,54 @@
+lcr-modules:
+    
+    minimap2:
+
+        inputs:
+            # Available wildcards: {seq_type} {genome_build} {sample_id} {number}
+            # The {number} wildcard is used to obtain read 1 and 2 fastq files for short-read Illumina genomes
+            sample_fastq:
+                promethION: "__UPDATE__"
+                genome: "__UPDATE__"
+
+        scratch_subdirectories: []
+
+        options:
+            minimap2:
+                # -ax map-ont: aligns long noisy reads (ONT) to a reference genome and outputs it in SAM format
+                # -L: writes CIGAR with >65535 operators at CG tag. This makes it compatible with older tools
+                # --MD: outputs the MD tag
+                # -Y: use soft clipping for supplementary alignments
+                # -R: SAM read group line in specified format
+                # secondary
+                # -2: Use two I/O threads during mapping. One for input, and another for output.
+                promethION: '-ax map-ont -L --MD -Y -2 -R "@RG\tID:{sample_id}\tLB:{sample_id}\tPL:ONT\tSM:{sample_id}"' 
+                genome: '-ax sr -L --MD -Y -R "@RG\tID:{sample_id}\tLB:{sample_id}\tPL:Illumina\tSM:{sample_id}"'
+            samtools: '-bhS'
+
+        conda_envs:
+            minimap2: "{MODSDIR}/envs/minimap2-2.24.yaml"
+            samtools: "{MODSDIR}/envs/samtools-1.9.yaml"
+            
+        threads:
+            minimap2: 24
+            samtools: 24
+
+        resources:
+            minimap2: 
+                mem_mb: 50000
+            samtools:
+                mem_mb: 10000
+            
+        pairing_config:
+            promethION:
+                run_paired_tumours: False
+                run_unpaired_tumours_with: "no_normal"
+                run_paired_tumours_as_unpaired: True
+
+    utils:
+        mem_mb:
+            bam_sort: 90000
+            bam_index: 15000
+        threads:
+            bam_sort: 24
+            bam_index: 12
+

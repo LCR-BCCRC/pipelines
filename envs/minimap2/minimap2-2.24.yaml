@@ -1,0 +1,16 @@
+name: minimap2
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1
+  - _openmp_mutex=4.5
+  - k8=0.2.5
+  - libgcc-ng=12.2.0
+  - libgomp=12.2.0
+  - libstdcxx-ng=12.2.0
+  - libzlib=1.2.13
+  - minimap2=2.24
+  - zlib=1.2.13
+prefix: /home/hshaalan/miniconda3/envs/minimap2
