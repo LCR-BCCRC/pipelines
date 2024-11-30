@@ -1,0 +1,17 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python =3.9
+  - biopython
+  - click
+  - matplotlib
+  - networkx
+  - numba
+  - numpy
+  - pandas
+  - scikit-learn
+  - scipy
+  - pip
+  - pip:
+      - "git+ssh://git@github.com/aroth85/phyclone.git@7c717f79e62535de952defc15f9907a82deda520"

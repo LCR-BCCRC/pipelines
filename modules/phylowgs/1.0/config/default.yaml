@@ -1,0 +1,60 @@
+lcr-modules:
+
+    phylowgs:
+
+        inputs:
+            # Available wildcards: {tumour_id} {normal_id} {pair_status} {genome_build} {sample_id}
+            maf: "__UPDATE__"
+            cellularity: "__UPDATE__" # battenberg/99-outputs/txt/{seq_type}--{genome_build}/{tumour_id}--{normal_id}_cellularity_ploidy.txt
+            subclones: "__UPDATE__" # battenberg/99-outputs/txt/{seq_type}--{genome_build}/{tumour_id}--{normal_id}_subclones.txt 
+            drivers: "__UPDATE__" # newline-separated list of driver gene HUGO symbols to be included on plots
+
+        scratch_subdirectories: [] # Recommended: "04-multievolve"
+
+        options:
+            create_inputs:
+                opts:
+                    "-s 5000 --verbose --regions all" # -s controls how many variants should be sub-sampled.
+            multievolve: ""
+            write_results: "--include-ssm-names"
+
+        switches:
+            # NOTE: You must include a "sex" column in the input samples table, formatted with "M" and "F".
+            # If patient sex is unknown, you can leave it empty and phyloWGS will run in "auto" mode.
+            sex:
+                M: "male"
+                F: "female"
+
+        conda_envs:
+            phylowgs: "{MODSDIR}/envs/phylowgs.yaml"
+            phylowgs_results: "{MODSDIR}/envs/phylowgs_results.yaml"
+            fill_battenberg: "{MODSDIR}/envs/fill_battenberg.yaml"
+            vcf2maf: "{MODSDIR}/envs/vcf2maf-1.6.18.yaml"
+            bcftools: "{MODSDIR}/envs/bcftools-1.10.2.yaml"
+            coreutils: "{MODSDIR}/envs/coreutils-8.31.yaml"
+
+        scripts:
+            fill_battenberg: "{MODSDIR}/src/fill_battenberg.py"
+            arm_file: "{MODSDIR}/etc/chromArmFiles/chromArm.{genome_build}.tsv"
+            process_outputs: "src/process_phyloWGS_outputs.R"
+            noncoding: "{MODSDIR}/etc/noncoding.txt"
+
+        threads:
+            create_inputs: 1
+            multievolve: 4
+            write_results: 1
+
+        resources:
+            create_inputs:
+                mem_mb: 10000
+            multievolve:
+                mem_mb: 40000
+                evolve: 1
+            write_results:
+                mem_mb: 20000
+
+        pairing_config:
+            genome:
+                run_paired_tumours: True
+                run_unpaired_tumours_with: None
+                run_paired_tumours_as_unpaired: False
