@@ -1,0 +1,115 @@
+lcr-modules:
+    
+    igv:
+
+        inputs:
+            # Available wildcards: {seq_type} {tumour_id} {normal_sample_id} {pair_status} {genome_build}
+            maf: "__UPDATE__"
+
+            # Available wildcards: {seq_type} {sample_id} {genome_build}
+            bam_path: "__UPDATE__"
+            bai_path: "__UPDATE__"
+
+
+        regions: 
+            # Provide regions files as lists in their respective genome builds so that liftover of coordinates occurs properly
+            # Please provide at least one regions file to filter MAF variants
+            oncodriveclustl:
+                grch37: ["__UPDATE__"]
+                hg38: []
+            hotmaps:
+                grch37: []
+                hg38: []
+            bed:
+                grch37: []
+                hg38: []
+            maf:
+                grch37: []
+                hg38: []
+            mutation_id:
+                # mutation_id format: minimum requirements are header containing "mutation_id_{regions_build}" column with values in {chr}:{pos} format
+                # e.g 
+                # mutation_id_grch37
+                # chr22:23230361
+                grch37: [] # e.g at minimum requires column mutation_id_grch37
+                hg38: [] # e.g at minimum requires column mutation_id_hg38
+
+        # Stop snakefile after MAF filtering step to estimate total number of snapshots that will be taken without running IGV
+        estimate_only: False 
+
+        options:
+
+            igv_version: "https://data.broadinstitute.org/igv/projects/downloads/2.7/IGV_Linux_2.7.2.zip"
+
+            genome_map: 
+                # Maps metadata builds to either grch37 or hg38 so that MAF file locations are determined correctly. Additional genome builds can be added as necessary.
+                grch37: ["grch37","hg19","hs37d5"]
+                hg38: ["hg38","grch38"] 
+
+            liftover_regions:
+                liftover_minMatch: "0.95" # Float number from 0 to 1 indicating minimal mapping when converting to a different genome build
+
+            generate_batch_script:
+                padding: 100 # Base pairs upstream and downstream of variant position
+                max_height: 1000 # Maximum height of snapshot
+                sleep_timer: 2000 # Batch scripts with more options may require longer sleep intervals
+                igv_options:
+                    # Presets for IGV snapshots
+                    # Available igv options: https://github.com/igvteam/igv/wiki/Batch-commands
+                    default: ["preference SAM.COLOR_BY READ_STRAND", "preference SAM.SHOW_CENTER_LINE TRUE", "preference SAM.SHADE_BASE_QUALITY true", "preference SAM.DOWNSAMPLE_READS FALSE", "preference SAM.ALLELE_THRESHOLD 0.05", "sort"]
+                    pairs: ["viewaspairs", "preference SAM.COLOR_BY READ_STRAND", "preference SAM.SHOW_CENTER_LINE TRUE", "preference SAM.SHADE_BASE_QUALITY true", "preference SAM.DOWNSAMPLE_READS FALSE", "preference SAM.ALLELE_THRESHOLD 0.05", "sort QUALITY"]
+
+            igv_presets: ["default"] # Available options: "default" "pairs"
+
+            xvfb_parameters:
+                # Server options for running xvfb
+                server_number: "99"
+                server_args: ""
+
+            quality_control:
+                # Truncated heights that have been previously observed for dimensions 1920x1080x24 
+                truncated: [506,533,545,547,559,570]
+                # Kurtosis and skewness values observed in blank snapshots at different height values
+                blank:
+                    "547":
+                        kurtosis: 18.5
+                        skewness: -4
+                    "559":
+                        kurtosis: 18.2
+                        skewness: -4
+                # Previously observed heights of snapshots that fail IGV
+                failed: [506,533]
+
+        scripts:
+            format_regions: "etc/format_regions.py"
+            filter_script: "etc/filter_maf.py"
+            region_liftover_script: "{SCRIPTSDIR}/liftover/1.0/liftover.sh"
+            batch_script_per_variant: "etc/generate_batch_script_per_variant.py"
+            quality_control: "etc/quality_control.py"
+
+        scratch_subdirectories: []
+
+        conda_envs:
+            liftover: "{SCRIPTSDIR}/liftover/1.0/liftover.yaml"
+            wget: "{MODSDIR}/envs/wget/wget-1.20.1.yaml"
+
+        threads: 4
+
+        resources:
+            _igv_liftover_regions:
+                mem_mb: 2000
+            _igv_run:
+                mem_mb: 2500
+            _igv_quality_control:
+                mem_mb: 2500
+            
+        pairing_config:
+            genome:
+                run_paired_tumours: True
+                run_unpaired_tumours_with: "unmatched_normal"
+                run_paired_tumours_as_unpaired: False
+            capture:
+                run_paired_tumours: True
+                run_unpaired_tumours_with: "unmatched_normal"
+                run_paired_tumours_as_unpaired: False
+
