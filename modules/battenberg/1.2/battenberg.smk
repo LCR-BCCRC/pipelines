@@ -86,6 +86,7 @@ rule _battenberg_get_reference:
         **CFG["resources"]["reference"]
     threads:
         CFG["threads"]["reference"]
+    conda: CFG["conda"]["wget"]
     shell:
         op.as_one_line("""
         wget -qO-  {params.url}/battenberg_impute_{params.alt_build}.tar.gz  |
